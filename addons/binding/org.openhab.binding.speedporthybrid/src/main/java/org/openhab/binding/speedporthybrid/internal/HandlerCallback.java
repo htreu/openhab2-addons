@@ -1,0 +1,48 @@
+/**
+ * Copyright (c) 2014,2018 by the respective copyright holders.
+ *
+ * See the NOTICE file(s) distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * http://www.eclipse.org/legal/epl-2.0
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ */
+package org.openhab.binding.speedporthybrid.internal;
+
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
+import org.eclipse.smarthome.core.thing.ChannelUID;
+import org.eclipse.smarthome.core.thing.ThingStatus;
+import org.eclipse.smarthome.core.thing.ThingStatusDetail;
+import org.eclipse.smarthome.core.types.State;
+
+/**
+ * Provide callback functions for {@link State} and {@link ThingStatus} updates.
+ *
+ * @author Henning Treu - initial contribution
+ *
+ */
+@NonNullByDefault
+public interface HandlerCallback {
+
+    /**
+     * Update the state of the given channel.
+     *
+     * @param channelUID the state of this channel will be updated.
+     * @param state      the new state for the given channel.
+     */
+    void updateState(ChannelUID channelUID, State state);
+
+    /**
+     * Update the status of the callback implementor.
+     *
+     * @param status      the new {@link ThingStatus}.
+     * @param detail      the new {@link ThingStatusDetail}.
+     * @param description the optional description.
+     */
+    void updateStatus(ThingStatus status, ThingStatusDetail detail, @Nullable String description);
+
+}

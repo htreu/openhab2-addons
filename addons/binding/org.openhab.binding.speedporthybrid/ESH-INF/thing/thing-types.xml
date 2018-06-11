@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<thing:thing-descriptions bindingId="speedporthybrid"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:thing="http://eclipse.org/smarthome/schemas/thing-description/v1.0.0"
+	xsi:schemaLocation="http://eclipse.org/smarthome/schemas/thing-description/v1.0.0 http://eclipse.org/smarthome/schemas/thing-description-1.0.0.xsd">
+
+	<thing-type id="speedporthybrid">
+		<label>SpeedportHybrid</label>
+		<description>The SpeedportHybrid Router</description>
+
+		<channels>
+			<channel id="lte" typeId="lte" />
+		</channels>
+
+		<config-description>
+			<parameter name="host" type="text" required="true">
+				<context>network-address</context>
+				<label>Host address</label>
+				<description>The host address of the SpeedportHybrid router. </description>
+			</parameter>
+
+			<parameter name="password" type="text" required="true">
+				<context>password</context>
+				<label>Password</label>
+				<description>The device password of the SpeedportHybrid router. </description>
+			</parameter>
+		</config-description>
+
+	</thing-type>
+
+	<channel-type id="lte">
+		<item-type>Switch</item-type>
+		<label>LTE</label>
+		<description>Toggle LTE support.</description>
+	</channel-type>
+
+</thing:thing-descriptions>
