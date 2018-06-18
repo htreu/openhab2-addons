@@ -1,6 +1,8 @@
 Manifest-Version: 1.0
 Bundle-ActivationPolicy: lazy
-Bundle-ClassPath: .
+Bundle-ClassPath: 
+ .,
+ lib/org.bouncycastle.bcprov-jdk15on-1.51.jar
 Bundle-ManifestVersion: 2
 Bundle-Name: SpeedportHybrid Binding
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
@@ -9,7 +11,8 @@ Bundle-Vendor: openHAB
 Bundle-Version: 2.3.0.qualifier
 Import-Package: 
  com.google.gson,
- org.apache.commons.codec.binary;version="1.6.0",
+ org.apache.commons.codec,
+ org.apache.commons.codec.binary,
  org.eclipse.jdt.annotation;resolution:=optional,
  org.eclipse.jetty.client,
  org.eclipse.jetty.client.api,

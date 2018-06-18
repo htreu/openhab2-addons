@@ -1,0 +1,109 @@
+/**
+ * Copyright (c) 2014,2018 by the respective copyright holders.
+ *
+ * See the NOTICE file(s) distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * http://www.eclipse.org/legal/epl-2.0
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ */
+package org.openhab.binding.speedporthybrid.internal;
+
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.spec.InvalidKeySpecException;
+
+import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.PBEKeySpec;
+
+import org.apache.commons.codec.DecoderException;
+import org.apache.commons.codec.binary.Hex;
+import org.bouncycastle.crypto.BlockCipher;
+import org.bouncycastle.crypto.InvalidCipherTextException;
+import org.bouncycastle.crypto.engines.AESEngine;
+import org.bouncycastle.crypto.modes.CCMBlockCipher;
+import org.bouncycastle.crypto.params.KeyParameter;
+import org.bouncycastle.crypto.params.ParametersWithIV;
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ *
+ * @author Henning Treu - initial contribution
+ *
+ */
+@NonNullByDefault
+public class CryptoUtils {
+
+    private final Logger logger = LoggerFactory.getLogger(CryptoUtils.class);
+
+    @Nullable
+    public String getPasswordHash(@Nullable String challengev, @Nullable String password) {
+        String pass = challengev + ":" + password;
+        MessageDigest digest;
+        try {
+            digest = MessageDigest.getInstance("SHA-256");
+            byte[] encodedhash = digest.digest(pass.getBytes());
+
+            return Hex.encodeHexString(encodedhash);
+        } catch (NoSuchAlgorithmException e) {
+            logger.warn("Error creating SHA256 hash.", e);
+        }
+
+        return null;
+    }
+
+    public byte[] encrypt(@Nullable String challengev, @Nullable String derivedKey, String data)
+            throws DecoderException, IllegalStateException, InvalidCipherTextException {
+        if (challengev == null || derivedKey == null) {
+            throw new IllegalArgumentException("Invalid arguments: challengev and derivedKey must not be null.");
+        }
+        String iv = challengev.substring(16, 32);
+        String authData = challengev.substring(32, 48);
+
+        byte[] inputData = data.getBytes();
+
+        BlockCipher engine = new AESEngine();
+        ParametersWithIV params = new ParametersWithIV(new KeyParameter(Hex.decodeHex(derivedKey.toCharArray())),
+                Hex.decodeHex(iv.toCharArray()));
+
+        CCMBlockCipher cipher = new CCMBlockCipher(engine);
+        cipher.init(true, params);
+        byte[] outputText = new byte[cipher.getOutputSize(inputData.length)];
+        int outputLen = cipher.processBytes(inputData, 0, inputData.length, outputText, 0);
+        byte[] aad = Hex.decodeHex(authData.toCharArray());
+        cipher.processAADBytes(aad, 0, aad.length);
+        cipher.doFinal(outputText, outputLen);
+
+        return Hex.encodeHexString(outputText).getBytes();
+    }
+
+    public @Nullable String calculateDerivedKey(@Nullable String challengev, @Nullable String password) {
+        if (challengev == null || password == null) {
+            throw new IllegalArgumentException("Invalid arguments: challengev and password must not be null.");
+        }
+
+        try {
+            String salt = challengev.substring(0, 16);
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] passwordHash = digest.digest(password.getBytes());
+
+            int iterations = 1000;
+            PBEKeySpec spec = new PBEKeySpec(Hex.encodeHexString(passwordHash).toCharArray(), salt.getBytes(),
+                    iterations, 128);
+            SecretKeyFactory skf = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA1");
+            byte[] hash = skf.generateSecret(spec).getEncoded();
+            return Hex.encodeHexString(hash);
+        } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
+
+        }
+
+        return null;
+    }
+
+}

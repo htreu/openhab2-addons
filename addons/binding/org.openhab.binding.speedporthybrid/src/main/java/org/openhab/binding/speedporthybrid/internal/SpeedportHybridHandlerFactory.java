@@ -54,7 +54,7 @@ public class SpeedportHybridHandlerFactory extends BaseThingHandlerFactory {
     protected @Nullable ThingHandler createHandler(Thing thing) {
         ThingTypeUID thingTypeUID = thing.getThingTypeUID();
 
-        if (THING_TYPE_SPEEDPORT_HYBRID.equals(thingTypeUID)) {
+        if (THING_TYPE_SPEEDPORT_HYBRID.equals(thingTypeUID) && httpClient != null) {
             return new SpeedportHybridHandler(thing, httpClient);
         }
 
