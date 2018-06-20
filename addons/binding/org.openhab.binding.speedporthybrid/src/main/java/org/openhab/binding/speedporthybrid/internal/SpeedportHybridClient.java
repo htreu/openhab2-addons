@@ -53,6 +53,7 @@ public class SpeedportHybridClient {
 
     private static final int CHALLANGEV_LENGTH = 64;
     private static final String CHALLANGEV = "challenge = \"";
+    private static final String NULLTOKEN = "nulltoken";
 
     private static CryptoUtils cryptoUtils = new CryptoUtils();
 
@@ -69,7 +70,6 @@ public class SpeedportHybridClient {
     @Nullable
     private String challengev;
 
-    @Nullable
     private String csrfToken;
 
     @Nullable
@@ -80,6 +80,7 @@ public class SpeedportHybridClient {
     public SpeedportHybridClient(HandlerCallback callback, HttpClient http) {
         this.callback = callback;
         this.http = http;
+        this.csrfToken = NULLTOKEN;
     }
 
     public void setConfig(SpeedportHybridConfiguration config) {
@@ -113,32 +114,36 @@ public class SpeedportHybridClient {
     }
 
     public void ensureLogin() {
-        if (csrfToken != null && challengev != null && derivedKey != null && isLogin()) {
+        if (!csrfToken.equals(NULLTOKEN) && challengev != null && derivedKey != null && isLogin()) {
             return;
         } else {
-            csrfToken = null;
+            csrfToken = NULLTOKEN;
             derivedKey = null;
-            refreshChallengevOrCSRFToken();
+            challengev = null;
+            refreshChallengev();
             if (challengev != null && login()) {
                 derivedKey = cryptoUtils.calculateDerivedKey(challengev, password);
                 refreshCSRFToken();
+            } else {
+                logger.warn("No login at '{}', challangev: '{}'", host, challengev);
             }
+
         }
     }
 
     private boolean isLogin() {
-        String url = "http://" + host + "/data/heartbeat.json?showpw=0&csrf_token=" + csrfToken + "&challengev="
-                + challengev + "&password=" + cryptoUtils.getPasswordHash(challengev, password);
-        ContentResponse resp = requestURL(url);
-        if (resp == null || resp.getContentAsString().isEmpty()) {
+        String url = "http://" + host + "/data/heartbeat.json";
+        String heartbeat = requestURL(url, true);
+        if (heartbeat == null || heartbeat.isEmpty()) {
             return false;
         }
 
-        String heartbeat = resp.getContentAsString();
-
         JsonModelList models = gson.fromJson(fixContent(heartbeat), JsonModelList.class);
         JsonModel loginstate = models.getModel("loginstate");
-        return loginstate != null && loginstate.varvalue.equals("1");
+        boolean hasLogin = loginstate != null && loginstate.varvalue.equals("1");
+        logger.debug("Login status at '{}' is {}", host, hasLogin);
+
+        return hasLogin;
     }
 
     private boolean login() {
@@ -160,9 +165,11 @@ public class SpeedportHybridClient {
         JsonModel login = models.getModel("login");
 
         if (login != null && login.varvalue.equals("success")) {
+            logger.debug("Successful login at '{}'.", host);
             callback.updateStatus(ONLINE, NONE, null);
             return true;
         } else {
+            logger.debug("Login failed at '{}'.", host);
             callback.updateStatus(OFFLINE, CONFIGURATION_ERROR, "Invalid credentials for router at '" + host + "'.");
             return false;
         }
@@ -174,13 +181,11 @@ public class SpeedportHybridClient {
 
     private void refreshCSRFToken() {
         String overviewURL = "http://" + host + "/html/content/overview/index.html";
-        ContentResponse response = requestURL(overviewURL);
+        String overview = requestURL(overviewURL, true);
 
-        if (response == null || response.getContentAsString().isEmpty()) {
+        if (overview == null || overview.isEmpty()) {
             return;
         }
-
-        String overview = response.getContentAsString();
 
         String beginPattern = "csrf_token = \"";
         String endPattern = "\";";
@@ -191,22 +196,14 @@ public class SpeedportHybridClient {
 
     private @Nullable JsonModelList getLoginModel() {
         ensureLogin();
-        String loginURL = "http://" + host + "/data/Login.json?showpw=0&csrf_token=" + csrfToken + "&challengev="
-                + challengev + "&password=" + cryptoUtils.getPasswordHash(challengev, password);
-        ContentResponse overviewResponse = null;
-        try {
-            overviewResponse = http.GET(loginURL);
-        } catch (InterruptedException | ExecutionException | TimeoutException e) {
-            callback.updateStatus(OFFLINE, COMMUNICATION_ERROR, e.getLocalizedMessage());
+        String loginURL = "http://" + host + "/data/Login.json";
+        String login = requestURL(loginURL, true);
+
+        if (login == null || login.isEmpty()) {
             return null;
         }
 
-        if (overviewResponse.getStatus() != HttpStatus.OK_200) {
-            callback.updateStatus(OFFLINE, CONFIGURATION_ERROR, "Invalid credentials for router at '" + host + "'");
-            return null;
-        }
-
-        return gson.fromJson(fixContent(overviewResponse.getContentAsString()), JsonModelList.class);
+        return gson.fromJson(fixContent(login), JsonModelList.class);
     }
 
     private void updateChannel(JsonModelList models, ChannelUID channelUID) {
@@ -220,45 +217,49 @@ public class SpeedportHybridClient {
         }
     }
 
-    private void refreshChallengevOrCSRFToken() {
-        String overviewURL = "http://" + host + "/html/content/overview/index.html";
-        ContentResponse resp = requestURL(overviewURL);
+    private void refreshChallengev() {
+        String baseURL = "http://" + host;
+        String content = requestURL(baseURL, false);
 
-        if (resp == null || resp.getContentAsString().isEmpty()) {
+        if (content == null || content.isEmpty()) {
             return;
         }
-
-        String content = resp.getContentAsString();
 
         if (content.indexOf(CHALLANGEV) > 0) {
             int beginIndex = content.indexOf(CHALLANGEV) + CHALLANGEV.length();
             challengev = content.substring(beginIndex, beginIndex + CHALLANGEV_LENGTH);
-            logger.debug("Extracted challengev from SpeedportHybrid router: " + challengev);
+            logger.debug("Extracted challengev '{}' from router at {}. ", challengev, host);
         } else {
-            String beginPattern = "csrf_token = \"";
-            String endPattern = "\";";
-            int beginIndex = content.indexOf(beginPattern);
-            int endIndex = content.indexOf(endPattern);
-            csrfToken = content.substring(beginIndex + beginPattern.length(), endIndex);
+            logger.debug("Challengev not extracted from router at {}. ", host);
         }
     }
 
-    private @Nullable ContentResponse requestURL(String url) {
+    private @Nullable String requestURL(String url, boolean attachAuthParams) {
+        String finalURL = url;
+
+        if (attachAuthParams) {
+            finalURL += "?showpw=0" + //
+                    "&csrf_token=" + csrfToken + //
+                    "&challengev=" + (challengev != null ? challengev : "") + //
+                    "&password=" + (challengev != null ? cryptoUtils.getPasswordHash(challengev, password) : "");
+        }
         ContentResponse response;
         try {
-            response = http.GET(url);
+            response = http.GET(finalURL);
         } catch (InterruptedException | ExecutionException | TimeoutException e) {
             callback.updateStatus(OFFLINE, COMMUNICATION_ERROR, e.getLocalizedMessage());
             return null;
         }
 
         if (response.getStatus() != HttpStatus.OK_200) {
+            logger.warn("Failed to connect to router at '{}', got status '{}' with message '{}'.", host,
+                    response.getStatus(), response.getContentAsString());
             callback.updateStatus(OFFLINE, CONFIGURATION_ERROR,
                     "Unable to retrieve URL '" + url + "' from router at '" + host + "'.");
             return null;
         }
 
-        return response;
+        return response.getContentAsString();
     }
 
     private void requestEncrypted(String url, String data, CommandChannelUpdateCallback channelUpdateCallback) {
@@ -286,12 +287,12 @@ public class SpeedportHybridClient {
         JsonModel status = models.getModel("status");
         if (status != null && status.varvalue.equals("ok")) {
             channelUpdateCallback.success();
+        }
 
-            csrfToken = null;
-            JsonModel csrfTokenModel = models.getModel("csfr_token");
-            if (csrfTokenModel != null) {
-                csrfToken = csrfTokenModel.varvalue;
-            }
+        csrfToken = NULLTOKEN;
+        JsonModel csrfTokenModel = models.getModel("csfr_token");
+        if (csrfTokenModel != null) {
+            csrfToken = csrfTokenModel.varvalue;
         }
     }
 }
