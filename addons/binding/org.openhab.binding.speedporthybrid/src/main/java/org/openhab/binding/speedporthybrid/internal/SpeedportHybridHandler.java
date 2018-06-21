@@ -63,12 +63,7 @@ public class SpeedportHybridHandler extends BaseThingHandler implements HandlerC
     }
 
     private void setLTE(ChannelUID channelUID, OnOffType onoff) {
-        client.setModule("use_lte", onoff == OnOffType.ON ? "1" : "0", new CommandChannelUpdateCallback() {
-            @Override
-            public void success() {
-                updateState(channelUID, onoff);
-            }
-        });
+        client.setModule("use_lte", onoff == OnOffType.ON ? "1" : "0", () -> updateState(channelUID, onoff));
     }
 
     @Override

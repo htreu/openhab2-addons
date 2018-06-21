@@ -21,7 +21,6 @@ import javax.crypto.spec.PBEKeySpec;
 
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
-import org.bouncycastle.crypto.BlockCipher;
 import org.bouncycastle.crypto.InvalidCipherTextException;
 import org.bouncycastle.crypto.engines.AESEngine;
 import org.bouncycastle.crypto.modes.CCMBlockCipher;
@@ -43,7 +42,7 @@ public class CryptoUtils {
     private final Logger logger = LoggerFactory.getLogger(CryptoUtils.class);
 
     @Nullable
-    public String getPasswordHash(@Nullable String challengev, @Nullable String password) {
+    public String hashPassword(@Nullable String challengev, @Nullable String password) {
         String pass = challengev + ":" + password;
         MessageDigest digest;
         try {
@@ -58,44 +57,41 @@ public class CryptoUtils {
         return null;
     }
 
-    public byte[] encrypt(@Nullable String challengev, @Nullable String derivedKey, String data)
+    public byte[] encrypt(@Nullable String challengev, byte[] derivedKey, String data)
             throws DecoderException, IllegalStateException, InvalidCipherTextException {
-        if (challengev == null || derivedKey == null) {
-            throw new IllegalArgumentException("Invalid arguments: challengev and derivedKey must not be null.");
+        if (challengev == null || derivedKey.length <= 0) {
+            throw new IllegalArgumentException(
+                    "Invalid auth argument: challengev and derivedKey must not be null or empty.");
         }
-        String iv = challengev.substring(16, 32);
-        String authData = challengev.substring(32, 48);
+        byte[] iv = hexToBytes(challengev.substring(16, 32));
+        byte[] authData = hexToBytes(challengev.substring(32, 48));
 
         byte[] inputData = data.getBytes();
 
-        BlockCipher engine = new AESEngine();
-        ParametersWithIV params = new ParametersWithIV(new KeyParameter(Hex.decodeHex(derivedKey.toCharArray())),
-                Hex.decodeHex(iv.toCharArray()));
+        ParametersWithIV params = new ParametersWithIV(new KeyParameter(derivedKey), iv);
 
-        CCMBlockCipher cipher = new CCMBlockCipher(engine);
+        CCMBlockCipher cipher = new CCMBlockCipher(new AESEngine());
         cipher.init(true, params);
         byte[] outputText = new byte[cipher.getOutputSize(inputData.length)];
         int outputLen = cipher.processBytes(inputData, 0, inputData.length, outputText, 0);
-        byte[] aad = Hex.decodeHex(authData.toCharArray());
-        cipher.processAADBytes(aad, 0, aad.length);
+        cipher.processAADBytes(authData, 0, authData.length);
         cipher.doFinal(outputText, outputLen);
 
         return Hex.encodeHexString(outputText).getBytes();
     }
 
-    public @Nullable String calculateDerivedKey(@Nullable String challengev, @Nullable String password) {
+    public @Nullable String deriveKey(@Nullable String challengev, @Nullable String password) {
         if (challengev == null || password == null) {
             throw new IllegalArgumentException("Invalid arguments: challengev and password must not be null.");
         }
 
         try {
-            String salt = challengev.substring(0, 16);
+            byte[] salt = challengev.substring(0, 16).getBytes();
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] passwordHash = digest.digest(password.getBytes());
 
             int iterations = 1000;
-            PBEKeySpec spec = new PBEKeySpec(Hex.encodeHexString(passwordHash).toCharArray(), salt.getBytes(),
-                    iterations, 128);
+            PBEKeySpec spec = new PBEKeySpec(Hex.encodeHexString(passwordHash).toCharArray(), salt, iterations, 128);
             SecretKeyFactory skf = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA1");
             byte[] hash = skf.generateSecret(spec).getEncoded();
             return Hex.encodeHexString(hash);
@@ -104,6 +100,10 @@ public class CryptoUtils {
         }
 
         return null;
+    }
+
+    private byte[] hexToBytes(String hex) throws DecoderException {
+        return Hex.decodeHex(hex.toCharArray());
     }
 
 }
