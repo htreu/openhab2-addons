@@ -29,4 +29,9 @@ public class SpeedportHybridConfiguration {
      */
     public String password;
 
+    /**
+     * The refresh interval in seconds. Use '0' to disable refresh.
+     */
+    public int refreshInterval;
+
 }

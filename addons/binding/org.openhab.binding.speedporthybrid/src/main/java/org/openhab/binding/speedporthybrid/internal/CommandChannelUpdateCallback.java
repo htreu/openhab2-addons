@@ -21,4 +21,6 @@ public interface CommandChannelUpdateCallback {
 
     void success();
 
+    void reject();
+
 }

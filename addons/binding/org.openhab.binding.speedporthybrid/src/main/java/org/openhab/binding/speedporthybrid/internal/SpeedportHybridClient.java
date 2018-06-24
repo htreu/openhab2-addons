@@ -276,6 +276,7 @@ public class SpeedportHybridClient {
             channelUpdateCallback.success();
         } else {
             logger.warn("Failed to update data '{}' on router at '{}'", data, host);
+            channelUpdateCallback.reject();
         }
 
         authParameters.updateCSRFToken(NULLTOKEN);

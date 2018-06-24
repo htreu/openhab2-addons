@@ -24,6 +24,12 @@
 				<label>Password</label>
 				<description>The device password of the SpeedportHybrid router. </description>
 			</parameter>
+
+			<parameter name="refreshInterval" type="integer" required="true">
+				<label>Refresh Interval</label>
+				<description>The interval in seconds when data is refreshed from the router. Use '0' to disable automatic refresh. </description>
+				<default>60</default>
+			</parameter>
 		</config-description>
 
 	</thing-type>
