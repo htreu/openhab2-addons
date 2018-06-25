@@ -15,7 +15,6 @@ package org.openhab.binding.speedporthybrid.internal;
 import static org.eclipse.smarthome.core.thing.ThingStatus.OFFLINE;
 import static org.eclipse.smarthome.core.thing.ThingStatus.ONLINE;
 import static org.eclipse.smarthome.core.thing.ThingStatusDetail.*;
-import static org.openhab.binding.speedporthybrid.internal.SpeedportHybridBindingConstants.CHANNEL_LTE;
 
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
@@ -31,8 +30,6 @@ import org.eclipse.jetty.client.util.BytesContentProvider;
 import org.eclipse.jetty.client.util.StringContentProvider;
 import org.eclipse.jetty.http.HttpHeader;
 import org.eclipse.jetty.http.HttpStatus;
-import org.eclipse.smarthome.core.library.types.OnOffType;
-import org.eclipse.smarthome.core.thing.ChannelUID;
 import org.openhab.binding.speedporthybrid.internal.model.AuthParameters;
 import org.openhab.binding.speedporthybrid.internal.model.JsonModel;
 import org.openhab.binding.speedporthybrid.internal.model.JsonModelList;
@@ -69,61 +66,62 @@ public class SpeedportHybridClient {
     @Nullable
     private String password;
 
-    private AuthParameters authParameters;
-
     private Gson gson = new Gson();
 
-    public SpeedportHybridClient(HandlerCallback callback, HttpClient http) {
+    SpeedportHybridClient(HandlerCallback callback, AuthParameters authParameters, HttpClient http) {
         this.callback = callback;
         this.http = http;
-        this.authParameters = new AuthParameters();
     }
 
-    public void setConfig(SpeedportHybridConfiguration config) {
+    void setConfig(SpeedportHybridConfiguration config) {
         this.host = config.host;
         this.password = config.password;
     }
 
-    /**
-     * Handle a refresh for the given channel.
-     *
-     * @param channelUID
-     */
-    public void handleRefresh(ChannelUID channelUID) {
-        JsonModelList models = getLoginModel();
-        if (models != null) {
-            updateChannel(models, channelUID);
+    @Nullable
+    JsonModelList getLoginModel(AuthParameters authParameters) {
+        login(authParameters);
+        String login = request("/data/Login.json", authParameters);
+
+        if (login == null || login.isEmpty()) {
+            return null;
         }
+
+        return gson.fromJson(fixContent(login), JsonModelList.class);
     }
 
-    /**
-     * Connect to the router and set the module to the given value.
-     *
-     * @param module the name of the module to set.
-     * @param value  the value to set.
-     */
-    public void setModule(String module, String value, CommandChannelUpdateCallback channelUpdateCallback) {
-        ensureLogin();
-        String data = module + "=" + value;
-        requestEncrypted("/data/Modules.json", data, channelUpdateCallback);
+    @Nullable
+    JsonModelList setModule(String data, AuthParameters authParameters) {
+        JsonModelList models = requestEncrypted("/data/Modules.json", data, authParameters);
+
+        authParameters.updateCSRFToken(NULLTOKEN);
+        JsonModel csrfTokenModel = models.getModel(CSRF_TOKEN);
+        if (csrfTokenModel != null) {
+            authParameters.updateCSRFToken(csrfTokenModel.varvalue != null ? csrfTokenModel.varvalue : NULLTOKEN);
+        }
+
+        return models;
     }
 
-    public void ensureLogin() {
-        if (authParameters.isValid() && isLogin()) {
+    void login(AuthParameters authParameters) {
+        if (authParameters.isValid() && isLogin(authParameters)) {
             return;
         } else {
             authParameters.reset();
-            refreshChallengev();
-            if (authParameters.getChallengev() != null && login()) {
-                refreshCSRFToken();
-            } else {
-                logger.warn("No login at '{}', challangev: '{}'", host, authParameters.getChallengev());
+            String challengev = refreshChallengev();
+            if (challengev != null) {
+                authParameters.updateChallengev(challengev, password);
+                if (doLogin(authParameters.getAuthData())) {
+                    refreshCSRFToken(authParameters);
+                } else {
+                    logger.warn("No login at '{}', challangev: '{}'", host, authParameters.getChallengev());
+                }
             }
         }
     }
 
-    private boolean isLogin() {
-        String heartbeat = request("/data/heartbeat.json", true);
+    private boolean isLogin(AuthParameters authParameters) {
+        String heartbeat = request("/data/heartbeat.json", authParameters);
         if (heartbeat == null || heartbeat.isEmpty()) {
             return false;
         }
@@ -136,11 +134,11 @@ public class SpeedportHybridClient {
         return hasLogin;
     }
 
-    private boolean login() {
+    private boolean doLogin(String authData) {
         String url = "http://" + host + "/data/Login.json";
         Request request = http.POST(url);
         request.header(HttpHeader.CONTENT_TYPE, "application/x-www-form-urlencoded");
-        request.content(new StringContentProvider(authParameters.getAuthData()));
+        request.content(new StringContentProvider(authData));
 
         ContentResponse response;
         try {
@@ -165,12 +163,8 @@ public class SpeedportHybridClient {
         }
     }
 
-    private String fixContent(String content) {
-        return "{jsonModels:" + content + "}";
-    }
-
-    private void refreshCSRFToken() {
-        String overview = request("/html/content/overview/index.html", true);
+    private void refreshCSRFToken(AuthParameters authParameters) {
+        String overview = request("/html/content/overview/index.html", authParameters);
 
         if (overview == null || overview.isEmpty()) {
             return;
@@ -183,33 +177,11 @@ public class SpeedportHybridClient {
         authParameters.updateCSRFToken(overview.substring(beginIndex + beginPattern.length(), endIndex));
     }
 
-    private @Nullable JsonModelList getLoginModel() {
-        ensureLogin();
-        String login = request("/data/Login.json", true);
-
-        if (login == null || login.isEmpty()) {
-            return null;
-        }
-
-        return gson.fromJson(fixContent(login), JsonModelList.class);
-    }
-
-    private void updateChannel(JsonModelList models, ChannelUID channelUID) {
-        if (channelUID.getId().equals(CHANNEL_LTE)) {
-            JsonModel use_lte = models.getModel("use_lte");
-            if (use_lte != null && use_lte.varvalue.equals("1")) {
-                callback.updateState(channelUID, OnOffType.ON);
-            } else {
-                callback.updateState(channelUID, OnOffType.OFF);
-            }
-        }
-    }
-
-    private void refreshChallengev() {
-        String content = request("", false);
+    private @Nullable String refreshChallengev() {
+        String content = request("", null);
 
         if (content == null || content.isEmpty()) {
-            return;
+            return null;
         }
 
         if (content.indexOf(CHALLANGEV) > 0) {
@@ -217,16 +189,18 @@ public class SpeedportHybridClient {
             String challengev = content.substring(beginIndex, beginIndex + CHALLANGEV_LENGTH);
             logger.debug("Extracted challengev '{}' from router at {}. ", challengev, host);
 
-            authParameters.updateChallengev(challengev, password);
+            return challengev;
         } else {
             logger.debug("Challengev not extracted from router at {}. ", host);
+            return null;
         }
     }
 
-    private @Nullable String request(String path, boolean attachAuthParams) {
+    @Nullable
+    private String request(String path, @Nullable AuthParameters authParameters) {
         String finalURL = "http://" + host + path;
 
-        if (attachAuthParams) {
+        if (authParameters != null) {
             finalURL += authParameters.getAuthData();
         }
         ContentResponse response;
@@ -248,41 +222,32 @@ public class SpeedportHybridClient {
         return response.getContentAsString();
     }
 
-    private void requestEncrypted(String path, String data, CommandChannelUpdateCallback channelUpdateCallback) {
+    private @Nullable JsonModelList requestEncrypted(String path, String data, AuthParameters authParameters) {
         byte[] encrypted;
         try {
             String fullData = CSRF_TOKEN + "=" + authParameters.getCSRFToken() + "&" + data;
             encrypted = cryptoUtils.encrypt(authParameters.getChallengev(), authParameters.getDerivedKey(), fullData);
         } catch (IllegalStateException | InvalidCipherTextException | DecoderException e) {
             logger.debug("Failed to encrypt request for router at '" + host + "'.");
-            return;
+            return null;
         }
 
         Request request = http.POST("http://" + host + path);
         request.header(HttpHeader.CONTENT_TYPE, "application/x-www-form-urlencoded");
         request.content(new BytesContentProvider(encrypted));
 
-        ContentResponse response = null;
+        ContentResponse response;
         try {
             response = request.send();
         } catch (InterruptedException | TimeoutException | ExecutionException e) {
             callback.updateStatus(OFFLINE, COMMUNICATION_ERROR, "Unbale to connect to router at '" + host + "'.");
-            return;
+            return null;
         }
 
-        JsonModelList models = gson.fromJson(fixContent(response.getContentAsString()), JsonModelList.class);
-        JsonModel status = models.getModel("status");
-        if (status != null && status.varvalue.equals("ok")) {
-            channelUpdateCallback.success();
-        } else {
-            logger.warn("Failed to update data '{}' on router at '{}'", data, host);
-            channelUpdateCallback.reject();
-        }
+        return gson.fromJson(fixContent(response.getContentAsString()), JsonModelList.class);
+    }
 
-        authParameters.updateCSRFToken(NULLTOKEN);
-        JsonModel csrfTokenModel = models.getModel(CSRF_TOKEN);
-        if (csrfTokenModel != null) {
-            authParameters.updateCSRFToken(csrfTokenModel.varvalue);
-        }
+    private String fixContent(String content) {
+        return "{jsonModels:" + content + "}";
     }
 }

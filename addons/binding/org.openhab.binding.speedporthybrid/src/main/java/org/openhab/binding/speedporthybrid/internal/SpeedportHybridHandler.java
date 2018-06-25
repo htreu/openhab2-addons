@@ -28,7 +28,11 @@ import org.eclipse.smarthome.core.thing.ThingStatusDetail;
 import org.eclipse.smarthome.core.thing.binding.BaseThingHandler;
 import org.eclipse.smarthome.core.types.Command;
 import org.eclipse.smarthome.core.types.RefreshType;
-import org.eclipse.smarthome.core.types.State;
+import org.openhab.binding.speedporthybrid.internal.model.AuthParameters;
+import org.openhab.binding.speedporthybrid.internal.model.JsonModel;
+import org.openhab.binding.speedporthybrid.internal.model.JsonModelList;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * The {@link SpeedportHybridHandler} is responsible for handling commands, which are
@@ -39,66 +43,29 @@ import org.eclipse.smarthome.core.types.State;
 @NonNullByDefault
 public class SpeedportHybridHandler extends BaseThingHandler implements HandlerCallback {
 
-    // private final Logger logger = LoggerFactory.getLogger(SpeedportHybridHandler.class);
+    private final Logger logger = LoggerFactory.getLogger(SpeedportHybridHandler.class);
 
-    @Nullable
     private SpeedportHybridConfiguration config;
-
-    private SpeedportHybridClient client;
 
     @Nullable
     private ScheduledFuture<?> scheduledRefresh;
 
+    private SpeedportHybridClient client;
+
+    private AuthParameters authParameters;
+
     public SpeedportHybridHandler(Thing thing, HttpClient http) {
         super(thing);
-        client = new SpeedportHybridClient(this, http);
-    }
-
-    @Override
-    public void handleCommand(ChannelUID channelUID, Command command) {
-        if (command == RefreshType.REFRESH) {
-            client.handleRefresh(channelUID);
-            return;
-        }
-
-        if (channelUID.getId().equals(CHANNEL_LTE)) {
-            if (command instanceof OnOffType) {
-                setLTE(channelUID, (OnOffType) command);
-            }
-        }
-    }
-
-    private void setLTE(ChannelUID channelUID, OnOffType onoff) {
-        client.setModule("use_lte", onoff == OnOffType.ON ? "1" : "0", new CommandChannelUpdateCallback() {
-
-            @Override
-            public void success() {
-                updateState(channelUID, onoff);
-            }
-
-            @Override
-            public void reject() {
-                updateState(channelUID, onoff == OnOffType.ON ? OnOffType.OFF : OnOffType.ON);
-            }
-        });
-    }
-
-    private void scheduleRefresh() {
-        if (scheduledRefresh != null) {
-            scheduledRefresh.cancel(true);
-        }
-
-        scheduledRefresh = scheduler.scheduleWithFixedDelay(() -> {
-            // updateModels();
-            // refreshChannels();
-        }, 0, config.refreshInterval, TimeUnit.SECONDS);
+        this.authParameters = new AuthParameters();
+        this.client = new SpeedportHybridClient(this, authParameters, http);
+        this.config = new SpeedportHybridConfiguration();
     }
 
     @Override
     public void initialize() {
         config = getConfigAs(SpeedportHybridConfiguration.class);
         client.setConfig(config);
-        client.ensureLogin();
+        client.login(authParameters);
 
         if (config.refreshInterval > 0) {
             scheduleRefresh();
@@ -116,13 +83,84 @@ public class SpeedportHybridHandler extends BaseThingHandler implements HandlerC
     }
 
     @Override
-    public void updateState(ChannelUID channelUID, State state) {
-        super.updateState(channelUID, state);
+    public void updateStatus(ThingStatus status, ThingStatusDetail detail, @Nullable String description) {
+        super.updateStatus(status, detail, description);
     }
 
     @Override
-    public void updateStatus(ThingStatus status, ThingStatusDetail detail, @Nullable String description) {
-        super.updateStatus(status, detail, description);
+    public void handleCommand(ChannelUID channelUID, Command command) {
+        if (command == RefreshType.REFRESH) {
+            handleRefresh(channelUID);
+            return;
+        }
+
+        if (channelUID.getId().equals(CHANNEL_LTE)) {
+            if (command instanceof OnOffType) {
+                setLTE(channelUID, (OnOffType) command);
+            }
+        }
+    }
+
+    private void handleRefresh(ChannelUID channelUID) {
+        JsonModelList models = client.getLoginModel(authParameters);
+        if (models != null) {
+            updateChannel(models, channelUID);
+        }
+    }
+
+    private void updateChannel(JsonModelList models, ChannelUID channelUID) {
+        if (channelUID.getId().equals(CHANNEL_LTE)) {
+            JsonModel use_lte = models.getModel("use_lte");
+            if (use_lte != null && use_lte.hasValue("1")) {
+                updateState(channelUID, OnOffType.ON);
+            } else {
+                updateState(channelUID, OnOffType.OFF);
+            }
+        }
+    }
+
+    private void setLTE(ChannelUID channelUID, OnOffType onoff) {
+        boolean success = setModule("use_lte", onoff == OnOffType.ON ? "1" : "0");
+        if (success) {
+            updateState(channelUID, onoff);
+        }
+        // else {
+        // authParameters.reset();
+        // setLTE(channelUID, onoff);
+        // }
+    }
+
+    private void scheduleRefresh() {
+        if (scheduledRefresh != null) {
+            scheduledRefresh.cancel(true);
+        }
+
+        scheduledRefresh = scheduler.scheduleWithFixedDelay(() -> {
+            // updateModels();
+            // refreshChannels();
+        }, 0, config.refreshInterval, TimeUnit.SECONDS);
+    }
+
+    /**
+     * Connect to the router and set the module to the given value.
+     *
+     * @param module the name of the module to set.
+     * @param value  the value to set.
+     * @return
+     */
+    private boolean setModule(String module, String value) {
+        client.login(authParameters);
+        String data = module + "=" + value;
+
+        JsonModelList models = client.setModule(data, authParameters);
+        JsonModel status = models.getModel("status");
+
+        if (status != null && status.hasValue("ok")) {
+            return true;
+        } else {
+            logger.warn("Failed to update data '{}' on router at '{}'", data, config.host);
+            return false;
+        }
     }
 
 }

@@ -14,7 +14,6 @@ package org.openhab.binding.speedporthybrid.internal;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.smarthome.core.thing.ChannelUID;
 import org.eclipse.smarthome.core.thing.ThingStatus;
 import org.eclipse.smarthome.core.thing.ThingStatusDetail;
 import org.eclipse.smarthome.core.types.State;
@@ -27,14 +26,6 @@ import org.eclipse.smarthome.core.types.State;
  */
 @NonNullByDefault
 public interface HandlerCallback {
-
-    /**
-     * Update the state of the given channel.
-     *
-     * @param channelUID the state of this channel will be updated.
-     * @param state      the new state for the given channel.
-     */
-    void updateState(ChannelUID channelUID, State state);
 
     /**
      * Update the status of the callback implementor.
