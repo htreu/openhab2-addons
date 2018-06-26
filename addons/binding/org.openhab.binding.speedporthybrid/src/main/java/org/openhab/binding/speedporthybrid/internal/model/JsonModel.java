@@ -17,7 +17,7 @@ import org.eclipse.jdt.annotation.Nullable;
 
 /**
  * Represents a node in the Speedport Hybrid JSON model.
- * 
+ *
  * @author Henning Treu - initial contribution
  *
  */
@@ -30,5 +30,9 @@ public class JsonModel {
 
     public boolean hasValue(String value) {
         return value.equals(varvalue);
+    }
+
+    public boolean isId(String varId) {
+        return this.varid != null && this.varid.equals(varId);
     }
 }

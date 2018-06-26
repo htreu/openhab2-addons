@@ -152,7 +152,7 @@ public class SpeedportHybridClient {
         JsonModelList models = gson.fromJson(fixContent(response.getContentAsString()), JsonModelList.class);
         JsonModel login = models.getModel("login");
 
-        if (login != null && login.varvalue.equals("success")) {
+        if (login != null && login.hasValue("success")) {
             logger.debug("Successful login at '{}'.", host);
             callback.updateStatus(ONLINE, NONE, null);
             return true;

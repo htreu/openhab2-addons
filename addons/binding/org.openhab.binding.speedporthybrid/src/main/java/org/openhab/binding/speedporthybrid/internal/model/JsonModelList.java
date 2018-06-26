@@ -28,7 +28,7 @@ public class JsonModelList {
     public List<JsonModel> jsonModels;
 
     public @Nullable JsonModel getModel(String varId) {
-        Optional<JsonModel> model = jsonModels.stream().filter(lm -> lm.varid.equals(varId)).findFirst();
+        Optional<JsonModel> model = jsonModels.stream().filter(lm -> lm.isId(varId)).findFirst();
         if (model.isPresent()) {
             return model.get();
         }

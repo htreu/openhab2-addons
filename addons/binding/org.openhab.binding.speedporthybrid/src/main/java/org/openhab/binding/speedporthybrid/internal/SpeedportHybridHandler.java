@@ -45,6 +45,8 @@ public class SpeedportHybridHandler extends BaseThingHandler implements HandlerC
 
     private final Logger logger = LoggerFactory.getLogger(SpeedportHybridHandler.class);
 
+    private static final String MODULE_USE_LTE = "use_lte";
+
     private SpeedportHybridConfiguration config;
 
     @Nullable
@@ -110,7 +112,7 @@ public class SpeedportHybridHandler extends BaseThingHandler implements HandlerC
 
     private void updateChannel(JsonModelList models, ChannelUID channelUID) {
         if (channelUID.getId().equals(CHANNEL_LTE)) {
-            JsonModel use_lte = models.getModel("use_lte");
+            JsonModel use_lte = models.getModel(MODULE_USE_LTE);
             if (use_lte != null && use_lte.hasValue("1")) {
                 updateState(channelUID, OnOffType.ON);
             } else {
@@ -120,7 +122,7 @@ public class SpeedportHybridHandler extends BaseThingHandler implements HandlerC
     }
 
     private void setLTE(ChannelUID channelUID, OnOffType onoff) {
-        boolean success = setModule("use_lte", onoff == OnOffType.ON ? "1" : "0");
+        boolean success = setModule(MODULE_USE_LTE, onoff == OnOffType.ON ? "1" : "0");
         if (success) {
             updateState(channelUID, onoff);
         }
