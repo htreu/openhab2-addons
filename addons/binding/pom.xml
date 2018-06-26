@@ -129,5 +129,6 @@
     <module>org.openhab.binding.zoneminder</module>
     <module>org.openhab.binding.zway</module>
     <module>org.openhab.binding.speedporthybrid</module>
+    <module>org.openhab.binding.speedporthybrid.test</module>
   </modules>
 </project>
