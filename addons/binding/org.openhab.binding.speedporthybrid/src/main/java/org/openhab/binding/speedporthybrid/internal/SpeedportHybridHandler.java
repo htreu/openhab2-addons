@@ -57,7 +57,7 @@ public class SpeedportHybridHandler extends BaseThingHandler implements HandlerC
     public SpeedportHybridHandler(Thing thing, HttpClient http) {
         super(thing);
         this.authParameters = new AuthParameters();
-        this.client = new SpeedportHybridClient(this, authParameters, http);
+        this.client = new SpeedportHybridClient(this, http);
         this.config = new SpeedportHybridConfiguration();
     }
 
@@ -124,10 +124,6 @@ public class SpeedportHybridHandler extends BaseThingHandler implements HandlerC
         if (success) {
             updateState(channelUID, onoff);
         }
-        // else {
-        // authParameters.reset();
-        // setLTE(channelUID, onoff);
-        // }
     }
 
     private void scheduleRefresh() {

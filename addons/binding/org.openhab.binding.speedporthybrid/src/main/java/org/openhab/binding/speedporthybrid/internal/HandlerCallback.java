@@ -16,10 +16,9 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.smarthome.core.thing.ThingStatus;
 import org.eclipse.smarthome.core.thing.ThingStatusDetail;
-import org.eclipse.smarthome.core.types.State;
 
 /**
- * Provide callback functions for {@link State} and {@link ThingStatus} updates.
+ * Provide a callback function for {@link ThingStatus} updates.
  *
  * @author Henning Treu - initial contribution
  *

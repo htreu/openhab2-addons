@@ -68,7 +68,7 @@ public class SpeedportHybridClient {
 
     private Gson gson = new Gson();
 
-    SpeedportHybridClient(HandlerCallback callback, AuthParameters authParameters, HttpClient http) {
+    SpeedportHybridClient(HandlerCallback callback, HttpClient http) {
         this.callback = callback;
         this.http = http;
     }

@@ -32,6 +32,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
+ * Utilities for cryptographic operations.
  *
  * @author Henning Treu - initial contribution
  *
