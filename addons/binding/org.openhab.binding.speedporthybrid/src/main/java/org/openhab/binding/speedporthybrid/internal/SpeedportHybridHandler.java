@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014,2018 by the respective copyright holders.
+ * Copyright (c) 2010-2018 by the respective copyright holders.
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information regarding copyright ownership.
@@ -143,7 +143,7 @@ public class SpeedportHybridHandler extends BaseThingHandler implements HandlerC
      * Connect to the router and set the module to the given value.
      *
      * @param module the name of the module to set.
-     * @param value  the value to set.
+     * @param value the value to set.
      * @return
      */
     private boolean setModule(String module, String value) {

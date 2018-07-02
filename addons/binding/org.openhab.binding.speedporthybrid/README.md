@@ -1,6 +1,6 @@
-# <bindingName> Binding
+# Speedport Hybrid Binding
 
-_Give some details about what this binding is meant for - a protocol, system, specific device._
+The Speedport Hybrid binding allows for control of the Telekom Speedport Hybrid router.
 
 _If possible, provide some resources like pictures, a YouTube video, etc. to give an impression of what can be done with this binding. You can place such resources into a `doc` folder next to this README.md._
 

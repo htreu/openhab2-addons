@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014,2018 by the respective copyright holders.
+ * Copyright (c) 2010-2018 by the respective copyright holders.
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information regarding copyright ownership.
@@ -29,8 +29,8 @@ public interface HandlerCallback {
     /**
      * Update the status of the callback implementor.
      *
-     * @param status      the new {@link ThingStatus}.
-     * @param detail      the new {@link ThingStatusDetail}.
+     * @param status the new {@link ThingStatus}.
+     * @param detail the new {@link ThingStatusDetail}.
      * @param description the optional description.
      */
     void updateStatus(ThingStatus status, ThingStatusDetail detail, @Nullable String description);
