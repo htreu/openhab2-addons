@@ -104,35 +104,31 @@ public class SpeedportHybridClient {
     }
 
     void login(AuthParameters authParameters) {
-        if (authParameters.isValid() && isLogin(authParameters)) {
-            return;
-        } else {
-            authParameters.reset();
-            String challengev = refreshChallengev();
-            if (challengev != null) {
-                authParameters.updateChallengev(challengev, password);
-                if (doLogin(authParameters.getAuthData())) {
-                    refreshCSRFToken(authParameters);
-                } else {
-                    logger.warn("No login at '{}', challangev: '{}'", host, authParameters.getChallengev());
-                }
+        authParameters.reset();
+        String challengev = refreshChallengev();
+        if (challengev != null) {
+            authParameters.updateChallengev(challengev, password);
+            if (doLogin(authParameters.getAuthData())) {
+                refreshCSRFToken(authParameters);
+            } else {
+                logger.warn("No login at '{}', challangev: '{}'", host, authParameters.getChallengev());
             }
         }
     }
 
-    private boolean isLogin(AuthParameters authParameters) {
-        String heartbeat = request("/data/heartbeat.json", authParameters);
-        if (heartbeat == null || heartbeat.isEmpty()) {
-            return false;
-        }
-
-        JsonModelList models = gson.fromJson(fixContent(heartbeat), JsonModelList.class);
-        JsonModel loginstate = models.getModel("loginstate");
-        boolean hasLogin = loginstate != null && loginstate.varvalue.equals("1");
-        logger.debug("Login status at '{}' is {}", host, hasLogin);
-
-        return hasLogin;
-    }
+    // private boolean isLogin(AuthParameters authParameters) {
+    // String heartbeat = request("/data/heartbeat.json", authParameters);
+    // if (heartbeat == null || heartbeat.isEmpty()) {
+    // return false;
+    // }
+    //
+    // JsonModelList models = gson.fromJson(fixContent(heartbeat), JsonModelList.class);
+    // JsonModel loginstate = models.getModel("loginstate");
+    // boolean hasLogin = loginstate != null && loginstate.varvalue.equals("1");
+    // logger.debug("Login status at '{}' is {}", host, hasLogin);
+    //
+    // return hasLogin;
+    // }
 
     private boolean doLogin(String authData) {
         String url = "http://" + host + "/data/Login.json";
