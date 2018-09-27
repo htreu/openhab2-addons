@@ -94,9 +94,12 @@ public class SpeedportHybridClient {
         JsonModelList models = requestEncrypted("/data/Modules.json", data, authParameters);
 
         authParameters.updateCSRFToken(NULLTOKEN);
-        JsonModel csrfTokenModel = models.getModel(CSRF_TOKEN);
-        if (csrfTokenModel != null) {
-            authParameters.updateCSRFToken(csrfTokenModel.varvalue != null ? csrfTokenModel.varvalue : NULLTOKEN);
+
+        if (models != null) {
+            JsonModel csrfTokenModel = models.getModel(CSRF_TOKEN);
+            if (csrfTokenModel != null) {
+                authParameters.updateCSRFToken(csrfTokenModel.varvalue != null ? csrfTokenModel.varvalue : NULLTOKEN);
+            }
         }
 
         return models;

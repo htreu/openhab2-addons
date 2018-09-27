@@ -15,11 +15,14 @@ package org.openhab.binding.speedporthybrid.internal.handler;
 import static org.openhab.binding.speedporthybrid.internal.SpeedportHybridBindingConstants.CHANNEL_LTE;
 
 import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.jetty.client.HttpClient;
+import org.eclipse.smarthome.core.cache.ExpiringCache;
 import org.eclipse.smarthome.core.library.types.OnOffType;
+import org.eclipse.smarthome.core.thing.Channel;
 import org.eclipse.smarthome.core.thing.ChannelUID;
 import org.eclipse.smarthome.core.thing.Thing;
 import org.eclipse.smarthome.core.thing.ThingStatus;
@@ -47,20 +50,26 @@ public class SpeedportHybridHandler extends BaseThingHandler implements HandlerC
 
     private static final String MODULE_USE_LTE = "use_lte";
 
+    private static final long CACHE_EXPIRY = 30 * 1000;
+
     private SpeedportHybridConfiguration config;
 
-    @Nullable
-    private ScheduledFuture<?> scheduledRefresh;
+    private @Nullable ScheduledFuture<?> scheduledRefresh;
 
     private SpeedportHybridClient client;
 
     private AuthParameters authParameters;
+
+    private ExpiringCache<@Nullable JsonModelList> cache;
 
     public SpeedportHybridHandler(Thing thing, HttpClient http) {
         super(thing);
         this.authParameters = new AuthParameters();
         this.client = new SpeedportHybridClient(this, http);
         this.config = new SpeedportHybridConfiguration();
+        this.cache = new ExpiringCache<>(CACHE_EXPIRY, () -> {
+            return client.getLoginModel(authParameters);
+        });
     }
 
     @Override
@@ -104,7 +113,7 @@ public class SpeedportHybridHandler extends BaseThingHandler implements HandlerC
     }
 
     private void handleRefresh(ChannelUID channelUID) {
-        JsonModelList models = client.getLoginModel(authParameters);
+        JsonModelList models = cache.getValue();
         if (models != null) {
             updateChannel(models, channelUID);
         }
@@ -133,10 +142,13 @@ public class SpeedportHybridHandler extends BaseThingHandler implements HandlerC
             scheduledRefresh.cancel(true);
         }
 
-        // scheduledRefresh = scheduler.scheduleWithFixedDelay(() -> {
-        // // updateModels();
-        // // refreshChannels();
-        // }, 0, config.refreshInterval, TimeUnit.SECONDS);
+        scheduledRefresh = scheduler.scheduleWithFixedDelay(() -> {
+            for (Channel channel : thing.getChannels()) {
+                if (!isLinked(channel.getUID())) {
+                    handleRefresh(channel.getUID());
+                }
+            }
+        }, 0, config.refreshInterval, TimeUnit.SECONDS);
     }
 
     /**
@@ -153,17 +165,20 @@ public class SpeedportHybridHandler extends BaseThingHandler implements HandlerC
         while (retryCount <= 2) {
             client.login(authParameters);
             JsonModelList models = client.setModule(data, authParameters);
-            JsonModel status = models.getModel("status");
 
-            // occasionally the router will not successfully process our request, retry 2 times.
-            if (status != null && status.hasValue("ok")) {
-                return true;
+            if (models != null) {
+                JsonModel status = models.getModel("status");
+                if (status != null && status.hasValue("ok")) {
+                    return true;
+                } else {
+                    // occasionally the router will not successfully process our request, retry 2 times.
+                    logger.trace("Unable to set module '{}' to value '{}', retryCount: '{}', retrying.", module, value,
+                            retryCount);
+                    retryCount++;
+                }
             } else {
-                logger.trace("Unable to set module '{}' to value '{}', retryCount: '{}', retrying.", module, value,
-                        retryCount);
-                retryCount++;
+                return false;
             }
-
         }
 
         logger.debug("Failed to update data '{}' on router at '{}'", data, config.host);
