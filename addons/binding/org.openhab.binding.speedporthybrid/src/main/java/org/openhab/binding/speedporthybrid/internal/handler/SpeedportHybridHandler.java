@@ -124,10 +124,8 @@ public class SpeedportHybridHandler extends BaseThingHandler implements HandlerC
     private void updateChannel(JsonModelList models, ChannelUID channelUID) {
         if (channelUID.getId().equals(CHANNEL_LTE)) {
             JsonModel use_lte = models.getModel(MODULE_USE_LTE);
-            if (use_lte != null && use_lte.hasValue("1")) {
-                updateState(channelUID, OnOffType.ON);
-            } else {
-                updateState(channelUID, OnOffType.OFF);
+            if (use_lte != null) {
+                updateState(channelUID, use_lte.hasValue("1") ? OnOffType.ON : OnOffType.OFF);
             }
         }
     }
