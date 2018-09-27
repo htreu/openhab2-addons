@@ -34,7 +34,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
-import org.openhab.binding.speedporthybrid.internal.SpeedportHybridHandler;
+import org.openhab.binding.speedporthybrid.internal.handler.SpeedportHybridHandler;
 
 /**
  * Test cases for {@link SpeedportHybridHandler}. The tests provide mocks for supporting entities using Mockito.

@@ -10,7 +10,7 @@
  *
  * SPDX-License-Identifier: EPL-2.0
  */
-package org.openhab.binding.speedporthybrid.internal;
+package org.openhab.binding.speedporthybrid.internal.handler;
 
 import static org.eclipse.smarthome.core.thing.ThingStatus.OFFLINE;
 import static org.eclipse.smarthome.core.thing.ThingStatus.ONLINE;
@@ -30,6 +30,7 @@ import org.eclipse.jetty.client.util.BytesContentProvider;
 import org.eclipse.jetty.client.util.StringContentProvider;
 import org.eclipse.jetty.http.HttpHeader;
 import org.eclipse.jetty.http.HttpStatus;
+import org.openhab.binding.speedporthybrid.internal.SpeedportHybridConfiguration;
 import org.openhab.binding.speedporthybrid.internal.model.AuthParameters;
 import org.openhab.binding.speedporthybrid.internal.model.JsonModel;
 import org.openhab.binding.speedporthybrid.internal.model.JsonModelList;
@@ -53,8 +54,6 @@ public class SpeedportHybridClient {
     private static final String CHALLANGEV = "challenge = \"";
     private static final String CSRF_TOKEN = "csrf_token";
     private static final String NULLTOKEN = "nulltoken";
-
-    private static CryptoUtils cryptoUtils = new CryptoUtils();
 
     private final HandlerCallback callback;
 
@@ -111,24 +110,10 @@ public class SpeedportHybridClient {
             if (doLogin(authParameters.getAuthData())) {
                 refreshCSRFToken(authParameters);
             } else {
-                logger.warn("No login at '{}', challangev: '{}'", host, authParameters.getChallengev());
+                logger.debug("No login at '{}', challangev: '{}'", host, authParameters.getChallengev());
             }
         }
     }
-
-    // private boolean isLogin(AuthParameters authParameters) {
-    // String heartbeat = request("/data/heartbeat.json", authParameters);
-    // if (heartbeat == null || heartbeat.isEmpty()) {
-    // return false;
-    // }
-    //
-    // JsonModelList models = gson.fromJson(fixContent(heartbeat), JsonModelList.class);
-    // JsonModel loginstate = models.getModel("loginstate");
-    // boolean hasLogin = loginstate != null && loginstate.varvalue.equals("1");
-    // logger.debug("Login status at '{}' is {}", host, hasLogin);
-    //
-    // return hasLogin;
-    // }
 
     private boolean doLogin(String authData) {
         String url = "http://" + host + "/data/Login.json";
@@ -149,7 +134,7 @@ public class SpeedportHybridClient {
         JsonModel login = models.getModel("login");
 
         if (login != null && login.hasValue("success")) {
-            logger.debug("Successful login at '{}'.", host);
+            logger.trace("Successful login at '{}'.", host);
             callback.updateStatus(ONLINE, NONE, null);
             return true;
         } else {
@@ -183,11 +168,11 @@ public class SpeedportHybridClient {
         if (content.indexOf(CHALLANGEV) > 0) {
             int beginIndex = content.indexOf(CHALLANGEV) + CHALLANGEV.length();
             String challengev = content.substring(beginIndex, beginIndex + CHALLANGEV_LENGTH);
-            logger.debug("Extracted challengev '{}' from router at {}. ", challengev, host);
+            logger.trace("Extracted challengev '{}' from router at {}. ", challengev, host);
 
             return challengev;
         } else {
-            logger.debug("Challengev not extracted from router at {}. ", host);
+            logger.trace("Challengev not extracted from router at {}. ", host);
             return null;
         }
     }
@@ -208,7 +193,7 @@ public class SpeedportHybridClient {
         }
 
         if (response.getStatus() != HttpStatus.OK_200) {
-            logger.warn("Failed to connect to router at '{}', got status '{}' with message '{}'.", host,
+            logger.debug("Failed to connect to router at '{}', got status '{}' with message '{}'.", host,
                     response.getStatus(), response.getContentAsString());
             callback.updateStatus(OFFLINE, CONFIGURATION_ERROR,
                     "Unable to retrieve URL '" + path + "' from router at '" + host + "'.");
@@ -222,7 +207,8 @@ public class SpeedportHybridClient {
         byte[] encrypted;
         try {
             String fullData = CSRF_TOKEN + "=" + authParameters.getCSRFToken() + "&" + data;
-            encrypted = cryptoUtils.encrypt(authParameters.getChallengev(), authParameters.getDerivedKey(), fullData);
+            encrypted = CryptoUtils.INSTANCE.encrypt(authParameters.getChallengev(), authParameters.getDerivedKey(),
+                    fullData);
         } catch (IllegalStateException | InvalidCipherTextException | DecoderException e) {
             logger.debug("Failed to encrypt request for router at '" + host + "'.");
             return null;

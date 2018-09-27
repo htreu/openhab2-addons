@@ -10,7 +10,7 @@
  *
  * SPDX-License-Identifier: EPL-2.0
  */
-package org.openhab.binding.speedporthybrid.internal;
+package org.openhab.binding.speedporthybrid.internal.handler;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -41,6 +41,12 @@ import org.slf4j.LoggerFactory;
 public class CryptoUtils {
 
     private final Logger logger = LoggerFactory.getLogger(CryptoUtils.class);
+
+    public static final CryptoUtils INSTANCE = new CryptoUtils();
+
+    private CryptoUtils() {
+        // prohibit external instantiation
+    }
 
     @Nullable
     public String hashPassword(@Nullable String challengev, @Nullable String password) {

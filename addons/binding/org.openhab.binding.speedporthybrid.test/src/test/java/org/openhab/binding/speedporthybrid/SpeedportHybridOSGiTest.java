@@ -26,7 +26,7 @@ import org.eclipse.smarthome.test.storage.VolatileStorageService;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.openhab.binding.speedporthybrid.internal.SpeedportHybridHandler;
+import org.openhab.binding.speedporthybrid.internal.handler.SpeedportHybridHandler;
 
 /**
  * Test cases for {@link SpeedportHybridHandler}.

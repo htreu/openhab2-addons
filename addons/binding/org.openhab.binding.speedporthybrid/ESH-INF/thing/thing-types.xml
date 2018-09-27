@@ -5,8 +5,8 @@
 	xsi:schemaLocation="http://eclipse.org/smarthome/schemas/thing-description/v1.0.0 http://eclipse.org/smarthome/schemas/thing-description-1.0.0.xsd">
 
 	<thing-type id="speedporthybrid">
-		<label>SpeedportHybrid</label>
-		<description>The SpeedportHybrid Router</description>
+		<label>Speedport Hybrid</label>
+		<description>A Speedport Hybrid router</description>
 
 		<channels>
 			<channel id="lte" typeId="lte" />
@@ -16,13 +16,13 @@
 			<parameter name="host" type="text" required="true">
 				<context>network-address</context>
 				<label>Host address</label>
-				<description>The host address of the SpeedportHybrid router. </description>
+				<description>The host address of the Speedport Hybrid router. </description>
 			</parameter>
 
 			<parameter name="password" type="text" required="true">
 				<context>password</context>
 				<label>Password</label>
-				<description>The device password of the SpeedportHybrid router. </description>
+				<description>The device password of the Speedport Hybrid router. </description>
 			</parameter>
 
 			<parameter name="refreshInterval" type="integer" required="true">

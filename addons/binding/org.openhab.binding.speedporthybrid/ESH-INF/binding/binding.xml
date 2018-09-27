@@ -3,8 +3,8 @@
 	xmlns:binding="http://eclipse.org/smarthome/schemas/binding/v1.0.0"
 	xsi:schemaLocation="http://eclipse.org/smarthome/schemas/binding/v1.0.0 http://eclipse.org/smarthome/schemas/binding-1.0.0.xsd">
 
-	<name>SpeedportHybrid Binding</name>
-	<description>Binding for the SpeedportHybrid router.</description>
+	<name>Speedport Hybrid Binding</name>
+	<description>Binding for the Speedport Hybrid router.</description>
 	<author>Henning Treu</author>
 
 </binding:binding>

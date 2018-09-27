@@ -10,7 +10,7 @@
  *
  * SPDX-License-Identifier: EPL-2.0
  */
-package org.openhab.binding.speedporthybrid.internal;
+package org.openhab.binding.speedporthybrid.internal.factory;
 
 import static org.openhab.binding.speedporthybrid.internal.SpeedportHybridBindingConstants.THING_TYPE_SPEEDPORT_HYBRID;
 
@@ -26,6 +26,7 @@ import org.eclipse.smarthome.core.thing.binding.BaseThingHandlerFactory;
 import org.eclipse.smarthome.core.thing.binding.ThingHandler;
 import org.eclipse.smarthome.core.thing.binding.ThingHandlerFactory;
 import org.eclipse.smarthome.io.net.http.HttpClientFactory;
+import org.openhab.binding.speedporthybrid.internal.handler.SpeedportHybridHandler;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 

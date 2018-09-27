@@ -16,7 +16,7 @@ import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.binding.speedporthybrid.internal.CryptoUtils;
+import org.openhab.binding.speedporthybrid.internal.handler.CryptoUtils;
 
 /**
  * Represents the set of authentication parameters used to communicate with the SpeedPort Hybrid router.
@@ -28,8 +28,6 @@ import org.openhab.binding.speedporthybrid.internal.CryptoUtils;
 public class AuthParameters {
 
     private static final String NULLTOKEN = "nulltoken";
-
-    private final CryptoUtils cryptoUtils;
 
     @Nullable
     private String challengev;
@@ -44,7 +42,6 @@ public class AuthParameters {
 
     public AuthParameters() {
         csrfToken = NULLTOKEN;
-        cryptoUtils = new CryptoUtils();
     }
 
     public @Nullable String getChallengev() {
@@ -53,8 +50,8 @@ public class AuthParameters {
 
     public void updateChallengev(String challengev, @Nullable String password) {
         this.challengev = challengev;
-        this.derivedKey = cryptoUtils.deriveKey(challengev, password);
-        this.passwordHash = cryptoUtils.hashPassword(challengev, password);
+        this.derivedKey = CryptoUtils.INSTANCE.deriveKey(challengev, password);
+        this.passwordHash = CryptoUtils.INSTANCE.hashPassword(challengev, password);
     }
 
     public String getCSRFToken() {
