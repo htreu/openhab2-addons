@@ -16,18 +16,18 @@
 			<parameter name="host" type="text" required="true">
 				<context>network-address</context>
 				<label>Host address</label>
-				<description>The host address of the Speedport Hybrid router. </description>
+				<description>The host address of the Speedport Hybrid router.</description>
 			</parameter>
 
 			<parameter name="password" type="text" required="true">
 				<context>password</context>
 				<label>Password</label>
-				<description>The device password of the Speedport Hybrid router. </description>
+				<description>The device password of the Speedport Hybrid router.</description>
 			</parameter>
 
 			<parameter name="refreshInterval" type="integer" required="true">
 				<label>Refresh Interval</label>
-				<description>The interval in seconds when data is refreshed from the router. Use '0' to disable automatic refresh. </description>
+				<description>The interval in seconds when data is refreshed from the router. Use '0' to disable automatic refresh.</description>
 				<default>60</default>
 			</parameter>
 		</config-description>
