@@ -113,9 +113,11 @@ public class SpeedportHybridHandler extends BaseThingHandler implements HandlerC
     }
 
     private void handleRefresh(ChannelUID channelUID) {
-        JsonModelList models = cache.getValue();
-        if (models != null) {
-            updateChannel(models, channelUID);
+        synchronized (channelUID) {
+            JsonModelList models = cache.getValue();
+            if (models != null) {
+                updateChannel(models, channelUID);
+            }
         }
     }
 
@@ -133,7 +135,7 @@ public class SpeedportHybridHandler extends BaseThingHandler implements HandlerC
     private void setLTE(ChannelUID channelUID, OnOffType onoff) {
         boolean success = setModule(MODULE_USE_LTE, onoff == OnOffType.ON ? "1" : "0");
         if (success) {
-            handleRefresh(channelUID);
+            updateState(channelUID, onoff);
         }
     }
 
@@ -144,7 +146,7 @@ public class SpeedportHybridHandler extends BaseThingHandler implements HandlerC
 
         scheduledRefresh = scheduler.scheduleWithFixedDelay(() -> {
             for (Channel channel : thing.getChannels()) {
-                if (!isLinked(channel.getUID())) {
+                if (isLinked(channel.getUID())) {
                     handleRefresh(channel.getUID());
                 }
             }
